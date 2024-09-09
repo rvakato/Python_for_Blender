@@ -8,6 +8,7 @@ Welcome everyone to collaborate on this repository. Mail: rvakato@gmail.com
 - DeleteDuplicateMT: Auto deleted duplicate material. ex. A.001, A.002 to A
 - DeleteUnusedUVmap: Auto deleted unused UVmap
 - RandomMaterial: Random Material
+- MergeMaterialwithSameName: Same material with the same name in material panel, merge them
 
 ## How to use?
 
