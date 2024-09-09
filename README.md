@@ -1,7 +1,8 @@
 # Python for Blender
 
 Here are the Python tools for Blender that I use in my daily work.
-Welcome everyone to collaborate on this repository. Mail: rvakato@gmail.com
+Welcome everyone to give me any suggestions or collaborate on this repository.
+mail: rvakato@gmail.com
 
 ## Content (keep updating):
 
