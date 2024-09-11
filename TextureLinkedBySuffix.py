@@ -34,6 +34,11 @@ def link_textures_to_principled(material):
                 material.node_tree.links.new(normal_map.outputs['Normal'], principled.inputs['Normal'])
             elif name.endswith('_emissive'):
                 material.node_tree.links.new(node.outputs['Color'], principled.inputs['Emission'])
+            elif name.endswith('_alpha'):
+                node.image.colorspace_settings.name = 'Non-Color'
+                material.node_tree.links.new(node.outputs['Color'], principled.inputs['Alpha'])
+                # Enable alpha in material settings
+                material.blend_method = 'BLEND'
 
 # Get the active object
 obj = bpy.context.active_object
