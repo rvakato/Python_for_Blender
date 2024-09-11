@@ -10,6 +10,7 @@ mail: rvakato@gmail.com
 - DeleteUnusedUVmap: Auto deleted unused UVmap
 - RandomMaterial: Random Material
 - MergeMaterialwithSameName: Same material with the same name in material panel, merge them
+- TextureLinkedBySuffix: automatically link texture by suffix
 
 ## How to use?
 
