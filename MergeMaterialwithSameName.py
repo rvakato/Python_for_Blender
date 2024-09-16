@@ -59,11 +59,18 @@ def remove_unused_material_slots(obj):
 
     print(f"Removed unused material slots for object: {obj.name}")
 
-# Get the active object
-obj = bpy.context.active_object
+# Get all selected objects
+selected_objects = bpy.context.selected_objects
 
-# Merge duplicate materials for the active object
-merge_duplicate_materials(obj)
+# Process each selected object
+for obj in selected_objects:
+    if obj.type == 'MESH':
+        # Merge duplicate materials for the object
+        merge_duplicate_materials(obj)
 
-# Remove unused material slots
-remove_unused_material_slots(obj)
+        # Remove unused material slots
+        remove_unused_material_slots(obj)
+    else:
+        print(f"Skipped non-mesh object: {obj.name}")
+
+print("Finished processing all selected objects.")
