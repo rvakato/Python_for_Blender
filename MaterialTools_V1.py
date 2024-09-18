@@ -177,7 +177,7 @@ class MATERIAL_TOOLS_Properties(bpy.types.PropertyGroup):
     base_color_suffix: bpy.props.StringProperty(
         name="Base Color Suffix",
         description="Suffix for base color textures",
-        default="_complete"
+        default="_albedo"
     )
     roughness_suffix: bpy.props.StringProperty(
         name="Roughness Suffix",
@@ -206,11 +206,11 @@ class MATERIAL_TOOLS_Properties(bpy.types.PropertyGroup):
     )
 
 class MATERIAL_TOOLS_PT_Panel(bpy.types.Panel):
-    bl_label = "Material Tools"
+    bl_label = "Simple Material Tool"
     bl_idname = "MATERIAL_TOOLS_PT_panel"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'Material Tools'
+    bl_category = 'Simple Material Tool'
 
     def draw(self, context):
         layout = self.layout
