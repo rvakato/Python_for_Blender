@@ -1,5 +1,8 @@
 bl_info = {
-    "name": "Material Tools",
+    "name": "Simple Material Tool",
+    "author": "rvakato",
+    "version": (0,0,1),
+    "description": "simple material tool",
     "blender": (2, 82, 0),
     "category": "3D View",
 }
