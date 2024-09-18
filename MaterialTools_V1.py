@@ -162,7 +162,7 @@ class AutoLinkTexture:
 
 class MATERIAL_TOOLS_Properties(bpy.types.PropertyGroup):
     random_material_prefix: bpy.props.StringProperty(
-        name="Random Material Prefix",
+        name="Prefix",
         description="Prefix for materials to be used in random assignment",
         default="_"
     )
