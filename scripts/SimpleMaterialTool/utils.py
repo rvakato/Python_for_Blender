@@ -92,6 +92,7 @@ class AutoLinkTexture:
         principled = next((n for n in nodes if n.type == 'BSDF_PRINCIPLED'), None)
         if not principled:
             return
+
         material_tools = bpy.context.scene.material_tools
         for node in nodes:
             if node.type == 'TEX_IMAGE':
@@ -99,22 +100,22 @@ class AutoLinkTexture:
                 if not image:
                     continue
                 name = os.path.splitext(image.name)[0].lower()
-                if name.endswith(material_tools.base_color_suffix):
+                if name.endswith(material_tools.base_color_suffix.lower()):
                     material.node_tree.links.new(node.outputs['Color'], principled.inputs['Base Color'])
-                elif name.endswith(material_tools.roughness_suffix):
+                elif name.endswith(material_tools.roughness_suffix.lower()):
                     node.image.colorspace_settings.name = 'Non-Color'
                     material.node_tree.links.new(node.outputs['Color'], principled.inputs['Roughness'])
-                elif name.endswith(material_tools.metalness_suffix):
+                elif name.endswith(material_tools.metalness_suffix.lower()):
                     node.image.colorspace_settings.name = 'Non-Color'
                     material.node_tree.links.new(node.outputs['Color'], principled.inputs['Metallic'])
-                elif name.endswith(material_tools.normal_suffix):
+                elif name.endswith(material_tools.normal_suffix.lower()):
                     node.image.colorspace_settings.name = 'Non-Color'
                     normal_map = nodes.new(type='ShaderNodeNormalMap')
                     material.node_tree.links.new(node.outputs['Color'], normal_map.inputs['Color'])
                     material.node_tree.links.new(normal_map.outputs['Normal'], principled.inputs['Normal'])
-                elif name.endswith(material_tools.emissive_suffix):
+                elif name.endswith(material_tools.emissive_suffix.lower()):
                     material.node_tree.links.new(node.outputs['Color'], principled.inputs['Emission'])
-                elif name.endswith(material_tools.alpha_suffix):
+                elif name.endswith(material_tools.alpha_suffix.lower()):
                     material.node_tree.links.new(node.outputs['Color'], principled.inputs['Alpha'])
 
     @staticmethod

@@ -108,7 +108,7 @@ class AutoLinkTexture:
                 if not image:
                     continue
                 name = os.path.splitext(image.name)[0].lower()
-                if name.endswith(material_tools.base_color_suffix):
+                if name.endswith(material_tools.base_color_suffix.lower()):
                     material.node_tree.links.new(node.outputs['Color'], principled.inputs['Base Color'])
                 elif name.endswith(material_tools.roughness_suffix):
                     node.image.colorspace_settings.name = 'Non-Color'
