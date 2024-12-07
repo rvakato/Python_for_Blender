@@ -3,57 +3,65 @@ import bmesh
 from mathutils import Vector
 import os
 
-# 全局变量存储 FBX 导出路径
+# Global variable to store FBX output folder path
 fbx_output_folder = bpy.props.StringProperty(
     name="Output Folder",
     description="Set the output folder for FBX files",
     default="C:/Users/rvaka/Desktop/Project/TEMP",
-    subtype='NONE'  # 移除文件夹图标
+    subtype='NONE'  # Remove folder icon
 )
 
-# 功能：将原点设置为几何中心并应用变换
+# Function: Apply transforms and set origin to the object's center of geometry
 def apply_transform_and_set_origin_to_center(obj):
-    if obj.type == 'MESH':  # 确保是网格类型物件
-        bpy.context.view_layer.objects.active = obj  # 设置为活动对象
+    if obj.type == 'MESH':  # Ensure the object is of type 'MESH'
+        bpy.context.view_layer.objects.active = obj  # Set as active object
 
-        # 应用物体的变换（确保准确的几何中心）
+        # Apply transformations (location, rotation, scale)
         bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
-        # 设置原点到几何中心
+        # Set origin to the center of geometry
         bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS', center='BOUNDS')
 
-# 功能：将原点设置为底部中心并移动到原点
+# Function: Set origin to the bottom center and move object to world origin
 def set_origin_to_bottom_center_and_move_to_origin(obj):
-    # 确保处于物件模式
+    # Ensure we are in object mode
     bpy.ops.object.mode_set(mode='OBJECT')
 
-    # 创建物件的 bmesh 网格数据
+    # Create a bounding box in world coordinates
     bbox_corners = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
 
-    # 找到底部中心
+    # Calculate the bottom center
     bottom_center = Vector((
         (bbox_corners[0].x + bbox_corners[4].x) / 2,
         (bbox_corners[0].y + bbox_corners[2].y) / 2,
         min(v.z for v in bbox_corners)
     ))
 
-    # 设置新原点
+    # Set the cursor to the bottom center and update the origin
     bpy.context.scene.cursor.location = bottom_center
     bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
 
-    # 移动物体到世界原点
+    # Move the object to the world origin
     obj.location = Vector((0, 0, 0))
 
-# 功能：导出选中的物体为 FBX
+# Function: Export selected objects as individual FBX files
 def export_fbx(objects, output_folder):
+    # Ensure the output folder exists
     os.makedirs(output_folder, exist_ok=True)
     for obj in objects:
-        if obj.type == 'MESH':  # 只处理网格类型物件
+        if obj.type == 'MESH':  # Only process mesh objects
+            # Generate a unique file name
             file_name = f"{obj.name}.fbx"
             file_path = os.path.join(output_folder, file_name)
+
+            # Deselect all objects
             bpy.ops.object.select_all(action='DESELECT')
+
+            # Select the current object and set it as active
             obj.select_set(True)
             bpy.context.view_layer.objects.active = obj
+
+            # Export the selected object as FBX
             bpy.ops.export_scene.fbx(
                 filepath=file_path,
                 use_selection=True,
@@ -65,7 +73,7 @@ def export_fbx(objects, output_folder):
             )
             print(f"Exported {obj.name} to {file_path}")
 
-# 操作类：用于导出 FBX 的功能
+# Operator class: Handles the FBX export functionality
 class EXPORT_OT_fbx_button(bpy.types.Operator):
     bl_idname = "export.fbx_button"
     bl_label = "Export FBX"
@@ -79,13 +87,16 @@ class EXPORT_OT_fbx_button(bpy.types.Operator):
         output_folder = context.scene.fbx_output_folder
         for obj in selected_objects:
             if obj.type == 'MESH':
+                # Apply transformations and adjust origins
                 apply_transform_and_set_origin_to_center(obj)
                 set_origin_to_bottom_center_and_move_to_origin(obj)
+        
+        # Export the processed objects
         export_fbx(selected_objects, output_folder)
         self.report({'INFO'}, "FBX Export Completed!")
         return {'FINISHED'}
 
-# 面板类：用于显示导出路径和按钮
+# Panel class: Displays UI elements for FBX export
 class VIEW3D_PT_fbx_export_panel(bpy.types.Panel):
     bl_label = "FBX Exporter"
     bl_idname = "VIEW3D_PT_fbx_exporter"
@@ -97,18 +108,19 @@ class VIEW3D_PT_fbx_export_panel(bpy.types.Panel):
         layout = self.layout
         scene = context.scene
         
-        # 输出路径输入框
+        # Input field for output folder path
         layout.prop(scene, "fbx_output_folder", text="FBX Path")
         
-        # 导出按钮
+        # Export button
         layout.operator("export.fbx_button", text="Export FBX")
 
-# 注册类和属性
+# Register classes and properties
 def register():
     bpy.utils.register_class(EXPORT_OT_fbx_button)
     bpy.utils.register_class(VIEW3D_PT_fbx_export_panel)
     bpy.types.Scene.fbx_output_folder = fbx_output_folder
 
+# Unregister classes and properties
 def unregister():
     bpy.utils.unregister_class(EXPORT_OT_fbx_button)
     bpy.utils.unregister_class(VIEW3D_PT_fbx_export_panel)
