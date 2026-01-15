@@ -1,10 +1,10 @@
 bl_info = {
-    "name": "Quick FBX Instance Exporter",
+    "name": "Quick FBX Instance Exporter (Enhanced)",
     "author": "Gemini AI",
-    "version": (1, 2),
+    "version": (1, 3),
     "blender": (3, 0, 0),
     "location": "View3D > Sidebar > FBX Export Tab",
-    "description": "Convert instances to real mesh, export FBX, and clean up automatically.",
+    "description": "Make Real, Single User, Apply Scale, Fix Normals, and Export FBX.",
     "category": "Import-Export",
 }
 
@@ -23,14 +23,13 @@ class SimpleExportProps(bpy.types.PropertyGroup):
         description="Enter filename without extension",
         default="Model_Export"
     )
-    # 新增：專供按集合名稱導出的路徑
     path_by_col: bpy.props.StringProperty(
         name="Col Export Path",
         description="Select the directory for Collection-named exports",
         subtype='DIR_PATH'
     )
 
-# --- 核心邏輯 1：原本的轉換 -> 導出 ---
+# --- 修改後的核心邏輯：保證恢復層級 ---
 class OBJECT_OT_QuickExport(bpy.types.Operator):
     bl_idname = "object.quick_export_instance"
     bl_label = "Process and Export"
@@ -46,38 +45,64 @@ class OBJECT_OT_QuickExport(bpy.types.Operator):
             return {'CANCELLED'}
 
         save_path = os.path.join(bpy.path.abspath(props.path), props.name + ".fbx")
-        existing_objects = set(bpy.data.objects)
+        
+        # 【關鍵 1】記錄場景中原始的所有物件，之後產生的全部刪除
+        original_objects = set(bpy.data.objects)
         original_selection = context.selected_objects.copy()
+        original_active = context.active_object
 
+        # 1. 複製並轉為實體
         bpy.ops.object.duplicate()
         bpy.ops.object.duplicates_make_real()
-
-        try:
-            bpy.ops.export_scene.fbx(
-                filepath=save_path,
-                use_selection=True,
-                bake_space_transform=True,
-                apply_scale_options='FBX_SCALE_ALL'
-            )
-            self.report({'INFO'}, f"Export Success: {props.name}.fbx")
-        except Exception as e:
-            self.report({'ERROR'}, f"Export Failed: {str(e)}")
         
-        all_objs_now = set(bpy.data.objects)
-        garbage_to_remove = all_objs_now - existing_objects
-        for obj in garbage_to_remove:
+        # 獲取複製品 (確保只對副本進行重算與 Apply Scale)
+        temp_objs = [obj for obj in context.selected_objects if obj.type == 'MESH']
+        
+        if temp_objs:
+            # 2. 批量處理複製品 (不合併，保持層級)
+            # Make Single User 避免影響到原始模型數據
+            bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True)
+            # Apply Scale (只影響複製品)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            
+            # 3. 效能優化：一次性進入編輯模式處理法線 (不重複進出模式)
+            context.view_layer.objects.active = temp_objs[0]
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.normals_make_consistent(inside=False)
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+            # 4. 執行導出
+            try:
+                bpy.ops.export_scene.fbx(
+                    filepath=save_path,
+                    use_selection=True,
+                    bake_space_transform=True,
+                    apply_scale_options='FBX_SCALE_ALL'
+                )
+                self.report({'INFO'}, f"Export Success: {props.name}.fbx")
+            except Exception as e:
+                self.report({'ERROR'}, f"Export Failed: {str(e)}")
+        
+        # 【關鍵 2】恢復原狀：刪除所有在 execute 期間產生的新物件
+        # 這樣就不會發生 Empty 消失或 Parent 斷掉的問題，因為我們是直接回到「過去」
+        current_objects = set(bpy.data.objects)
+        new_garbage = current_objects - original_objects
+        
+        for obj in new_garbage:
             if obj.name in bpy.data.objects:
                 bpy.data.objects.remove(obj, do_unlink=True)
 
+        # 5. 恢復原始選取
+        bpy.ops.object.select_all(action='DESELECT')
         for obj in original_selection:
             if obj.name in bpy.data.objects:
                 obj.select_set(True)
-        if original_selection:
-            context.view_layer.objects.active = original_selection[0]
+        context.view_layer.objects.active = original_active
 
         return {'FINISHED'}
 
-# --- 新增核心邏輯 2：按 Collection 名稱導出 ---
+# --- 核心邏輯 2：按 Collection 名稱導出 (保持原樣) ---
 class OBJECT_OT_ExportByCollectionName(bpy.types.Operator):
     bl_idname = "object.export_by_collection_name"
     bl_label = "Export Selected (Auto Name)"
@@ -86,24 +111,19 @@ class OBJECT_OT_ExportByCollectionName(bpy.types.Operator):
 
     def execute(self, context):
         props = context.scene.simple_export_props
-        
         if not props.path_by_col:
             self.report({'ERROR'}, "Please specify the Collection Export Path.")
             return {'CANCELLED'}
-        
         if not context.selected_objects:
             self.report({'ERROR'}, "Nothing selected.")
             return {'CANCELLED'}
 
-        # 獲取活動物件或第一個選中物件的 Collection 名稱
         target_obj = context.active_object if context.active_object else context.selected_objects[0]
-        
         if not target_obj.users_collection:
             self.report({'ERROR'}, "Object does not belong to any collection.")
             return {'CANCELLED'}
             
         col_name = target_obj.users_collection[0].name
-        # 處理資料夾路徑與檔名
         folder_path = bpy.path.abspath(props.path_by_col)
         save_path = os.path.join(folder_path, col_name + ".fbx")
 
@@ -132,7 +152,6 @@ class VIEW3D_PT_QuickExportPanel(bpy.types.Panel):
         layout = self.layout
         props = context.scene.simple_export_props
         
-        # 區塊 1：原始功能
         box = layout.box()
         box.label(text="Manual Naming Export", icon='FILE_TICK')
         box.prop(props, "path")
@@ -141,12 +160,10 @@ class VIEW3D_PT_QuickExportPanel(bpy.types.Panel):
         
         layout.separator()
 
-        # 區塊 2：新增功能 (按 Collection 名稱)
         box = layout.box()
         box.label(text="Export by Collection Name", icon='OUTLINER_COLLECTION')
         box.prop(props, "path_by_col", text="Folder")
         
-        # 顯示即時預測的檔名 (提示用)
         target_obj = context.active_object if context.active_object else (context.selected_objects[0] if context.selected_objects else None)
         if target_obj and target_obj.users_collection:
             box.label(text=f"Filename: {target_obj.users_collection[0].name}.fbx", icon='INFO')
