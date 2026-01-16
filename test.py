@@ -19,28 +19,47 @@ class OBJECT_OT_ProcessOnly(bpy.types.Operator):
             self.report({'ERROR'}, "Nothing selected.")
             return {'CANCELLED'}
 
-        # 1. 複製與實體化
+        # --- 核心邏輯修改開始 ---
+        
+        # 1. 紀錄執行前的所有物件
+        old_objs = set(bpy.data.objects)
+
+        # 2. 複製並實體化
         bpy.ops.object.duplicate()
         bpy.ops.object.duplicates_make_real()
         
-        # 【關鍵修改】清除父級關係並保持變換 (避免層級干擾)
+        # 3. 找出所有「新生成」的物件（包含 Mesh 和 Empty）
+        new_objs = [obj for obj in bpy.data.objects if obj not in old_objs]
+
+        # 4. 強制選取所有新物件，並取消選取舊物件
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in new_objs:
+            obj.select_set(True)
+            
+        # 5. 清除父級關係 (現在 new_objs 包含了那些 Empty 物件，這步會很有用)
         bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
         
-        temp_objs = [obj for obj in context.selected_objects if obj.type == 'MESH']
+        # 6. 篩選出其中的 Mesh 進行後續處理（法線、縮放等）
+        temp_meshes = [obj for obj in new_objs if obj.type == 'MESH']
         
-        if temp_objs:
-            # 2. Make Single User & Apply Scale
+        if temp_meshes:
             bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True)
             bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
             
-            # 3. 修正法線
-            context.view_layer.objects.active = temp_objs[0]
+            # 修正法線 (以第一個 Mesh 為 active)
+            context.view_layer.objects.active = temp_meshes[0]
             bpy.ops.object.mode_set(mode='EDIT')
             bpy.ops.mesh.select_all(action='SELECT')
             bpy.ops.mesh.normals_make_consistent(inside=False)
             bpy.ops.object.mode_set(mode='OBJECT')
+
+        # 7. 最後確保所有新物件 (Mesh + Empty) 都被選中，然後進入隔離模式
+        for obj in new_objs:
+            obj.select_set(True)
             
-            self.report({'INFO'}, "Process Finished: Parent cleared & Result kept.")
+        bpy.ops.view3d.localview(frame_selected=True)
+
+        self.report({'INFO'}, f"Processed {len(new_objs)} objects and Isolated.")
         return {'FINISHED'}
 
 class OBJECT_OT_QuickExport(bpy.types.Operator):
