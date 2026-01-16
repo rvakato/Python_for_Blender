@@ -140,7 +140,7 @@ class OBJECT_OT_ExportByCollectionName(bpy.types.Operator):
 
         return {'FINISHED'}
 
-# --- UI 面板 ---
+# --- UI 面板 (僅修改此部分) ---
 class VIEW3D_PT_QuickExportPanel(bpy.types.Panel):
     bl_label = "FBX Instance Exporter"
     bl_idname = "VIEW3D_PT_quick_export"
@@ -154,9 +154,17 @@ class VIEW3D_PT_QuickExportPanel(bpy.types.Panel):
         
         box = layout.box()
         box.label(text="Manual Naming Export", icon='FILE_TICK')
+        
+        # 獨立出的 Process 按鈕放在上方
+        box.operator("object.quick_export_instance", icon='TOOL_SETTINGS', text="PROCESS")
+        
+        box.separator()
+        
         box.prop(props, "path")
         box.prop(props, "name")
-        box.operator("object.quick_export_instance", icon='EXPORT', text="PROCESS & EXPORT")
+        
+        # 改名後的 Export 按鈕
+        box.operator("object.quick_export_instance", icon='EXPORT', text="EXPORT")
         
         layout.separator()
 
