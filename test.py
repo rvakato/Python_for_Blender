@@ -64,7 +64,7 @@ class OBJECT_OT_ProcessOnly(bpy.types.Operator):
 
 class OBJECT_OT_QuickExport(bpy.types.Operator):
     bl_idname = "object.quick_export_instance"
-    bl_label = "Process and Export"
+    bl_label = "Direct Export"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -76,45 +76,21 @@ class OBJECT_OT_QuickExport(bpy.types.Operator):
             self.report({'ERROR'}, "Nothing selected.")
             return {'CANCELLED'}
 
+        # 直接組合路徑並導出目前選取的東西
         save_path = os.path.join(bpy.path.abspath(props.path), props.name + ".fbx")
-        original_objects = set(bpy.data.objects)
-        original_selection = context.selected_objects.copy()
-        original_active = context.active_object
-
-        # 執行處理步驟 (與 ProcessOnly 一致)
-        bpy.ops.object.duplicate()
-        bpy.ops.object.duplicates_make_real()
         
-        # 【關鍵修改】清除父級關係並保持變換
-        bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+        try:
+            # 這裡直接使用 use_selection=True，只會導出你手動選取的物件
+            bpy.ops.export_scene.fbx(
+                filepath=save_path, 
+                use_selection=True, 
+                bake_space_transform=True, 
+                apply_scale_options='FBX_SCALE_ALL'
+            )
+            self.report({'INFO'}, f"Direct Export Success: {props.name}.fbx")
+        except Exception as e:
+            self.report({'ERROR'}, f"Export Failed: {str(e)}")
         
-        temp_objs = [obj for obj in context.selected_objects if obj.type == 'MESH']
-        
-        if temp_objs:
-            bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True)
-            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-            context.view_layer.objects.active = temp_objs[0]
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.mesh.normals_make_consistent(inside=False)
-            bpy.ops.object.mode_set(mode='OBJECT')
-
-            # 導出
-            try:
-                bpy.ops.export_scene.fbx(filepath=save_path, use_selection=True, bake_space_transform=True, apply_scale_options='FBX_SCALE_ALL')
-                self.report({'INFO'}, f"Export Success: {props.name}.fbx")
-            except Exception as e:
-                self.report({'ERROR'}, f"Export Failed: {str(e)}")
-        
-        # 恢復原狀（刪除臨時副本與空物件垃圾）
-        current_objects = set(bpy.data.objects)
-        for obj in (current_objects - original_objects):
-            if obj.name in bpy.data.objects:
-                bpy.data.objects.remove(obj, do_unlink=True)
-
-        for obj in original_selection:
-            if obj.name in bpy.data.objects: obj.select_set(True)
-        context.view_layer.objects.active = original_active
         return {'FINISHED'}
 
 class OBJECT_OT_ExportByCollectionName(bpy.types.Operator):
