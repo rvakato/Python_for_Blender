@@ -22,14 +22,20 @@ The panel labels the steps explicitly so the workflow order is always visible:
 
 | Button | Step |
 |---|---|
-| Record Reference Face | Step 1a |
-| Calibrate Orientation | Step 1b |
+| Record Primary Face | Step 1a |
+| Record Secondary Face | Step 1b |
+| Calibrate Orientation | Step 1c |
 | Select by Poly Count | Step 2 |
 | Recover and Instance | Step 3 |
+| Simple Instance | — |
 
-After **Record Reference Face** is run, the panel displays the stored face area, edge count, and local offset so you can confirm the correct face was captured before proceeding.
+**Two-face system for full orientation lock:**
+- **Primary face** — defines the main axis (Z) and stores the local offset used for depth placement
+- **Secondary face** — its normal is projected onto the plane perpendicular to the primary axis to resolve roll, fully locking the coordinate frame for asymmetric geometry
 
-**Calibrate Orientation** uses the recorded face's normal to align the object to world Z. If no face has been recorded it falls back to the two-largest-faces heuristic. After calibration, the stored local offset is automatically updated to reflect the face's new position in the calibrated geometry.
+**Simple Instance** is a standalone utility (no step number) for objects whose rotation and position are already correct — it only replaces mesh data with the master's, anchoring each object to its own existing origin without touching any transforms.
+
+**Calibrate Orientation** bakes a canonical orientation into the mesh using both faces. After calibration, the stored local offset is automatically updated to reflect the face's new position. Fallback chain: two faces → primary only (roll guessed) → two largest faces.
 
 ---
 
@@ -74,8 +80,9 @@ The individual `.py` files remain available to run separately from the Text Edit
 
 ## Workflow
 
-1. Enter Edit Mode on the reference object, select the key face (e.g. the top face), run **Record Reference Face** — stores area, perimeter, edge count, and local offset from origin.
-2. Back in Object Mode, run **Calibrate Orientation** — aligns the geometry to world Z using the recorded face's normal. The stored local offset is updated automatically to match the new geometry position.
-3. Run **Select by Poly Count** to select all similar objects across the scene.
-4. Shift-click the reference last to make it active, run **Recover and Instance** — finds the matching face on each target, infers rotation from its normal, and places the origin at `face_center - (rotation × local_offset)`.
-5. Export via the main exporter addons in the repo root.
+1. Enter Edit Mode on the reference object, select the **primary face** (e.g. top face), run **Record Primary Face** — stores area, perimeter, edge count, and local offset.
+2. Still in Edit Mode, select the **secondary face** (any non-parallel face, e.g. a side face), run **Record Secondary Face** — stores its properties for roll resolution.
+3. Back in Object Mode, run **Calibrate Orientation** — builds a fully-locked canonical frame from both face normals and bakes it into the mesh. The stored local offset updates automatically.
+4. Run **Select by Poly Count** to select all similar objects across the scene.
+5. Shift-click the reference last to make it active, run **Recover and Instance** — matches both faces on each target, builds a full rotation frame, and places the origin at `face_center - (rotation × local_offset)`.
+6. Export via the main exporter addons in the repo root.
